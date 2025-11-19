@@ -2,14 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import { Order, OrderStatus, Language } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { CheckCircle2, ChefHat, Truck, Home, Phone, Star } from 'lucide-react';
+import { CheckCircle2, ChefHat, Truck, Home, Phone, Star, FastForward } from 'lucide-react';
 
 interface OrderTrackerProps {
   order: Order;
   language: Language;
+  onUpdateStatus?: (id: string, status: OrderStatus) => void;
 }
 
-export const OrderTracker: React.FC<OrderTrackerProps> = ({ order, language }) => {
+export const OrderTracker: React.FC<OrderTrackerProps> = ({ order, language, onUpdateStatus }) => {
   const [progress, setProgress] = useState(0);
   const t = TRANSLATIONS[language];
 
@@ -33,6 +34,20 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order, language }) =
     }, 100);
     return () => clearTimeout(timer);
   }, [order.status]);
+
+  const handleNextStep = () => {
+    if (!onUpdateStatus) return;
+    let next: OrderStatus | undefined;
+    
+    if (order.status === OrderStatus.PENDING) next = OrderStatus.CONFIRMED;
+    else if (order.status === OrderStatus.CONFIRMED) next = OrderStatus.PREPARING;
+    else if (order.status === OrderStatus.PREPARING) next = OrderStatus.DELIVERING; // Skip 'Ready' for smooth demo flow
+    else if (order.status === OrderStatus.DELIVERING) next = OrderStatus.DELIVERED;
+    
+    if (next) {
+      onUpdateStatus(order.id, next);
+    }
+  };
 
   // Helper to format timestamps
   const formatTime = (timestamp: number) => {
@@ -95,12 +110,23 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order, language }) =
             )}
           </p>
         </div>
-        <div className="bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${order.status === OrderStatus.DELIVERED ? 'bg-green-400' : 'bg-street-orange'}`}></span>
-            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${order.status === OrderStatus.DELIVERED ? 'bg-green-500' : 'bg-street-orange'}`}></span>
-          </span>
-          <span className="text-xs font-bold text-street-dark uppercase tracking-wide">{order.status}</span>
+        <div className="flex items-center gap-2">
+          {onUpdateStatus && order.status !== OrderStatus.DELIVERED && (
+            <button 
+              onClick={handleNextStep}
+              className="p-1.5 bg-gray-200 hover:bg-street-orange hover:text-white text-gray-600 rounded-full transition-all active:scale-90"
+              title="Advance Status (Demo)"
+            >
+              <FastForward size={14} />
+            </button>
+          )}
+          <div className="bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${order.status === OrderStatus.DELIVERED ? 'bg-green-400' : 'bg-street-orange'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${order.status === OrderStatus.DELIVERED ? 'bg-green-500' : 'bg-street-orange'}`}></span>
+            </span>
+            <span className="text-xs font-bold text-street-dark uppercase tracking-wide">{order.status}</span>
+          </div>
         </div>
       </div>
 

@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { MenuItem } from '../types';
 import { CATEGORIES } from '../constants';
-import { X, Upload, DollarSign, Type, FileText, Flame, Leaf } from 'lucide-react';
+import { generateMenuImage } from '../services/geminiService';
+import { X, Upload, DollarSign, Type, FileText, Flame, Leaf, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
 interface AdminItemModalProps {
   isOpen: boolean;
@@ -21,6 +22,9 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
     isSpicy: false,
     isVeg: false
   });
+  
+  const [errors, setErrors] = useState<{name?: string, price?: string}>({});
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -30,31 +34,69 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
         name: '',
         description: '',
         price: 0,
-        category: 'Burgers',
+        category: 'Rice Meals', // Default category adjusted to filipino context in constants
         image: '',
         isSpicy: false,
         isVeg: false
       });
     }
+    setErrors({}); // Clear errors on open
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
+  const validate = () => {
+    const newErrors: {name?: string, price?: string} = {};
+    
+    if (!formData.name || !formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
+    
+    if (!formData.price || Number(formData.price) <= 0) {
+      newErrors.price = "Price must be greater than 0";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate
-    if (!formData.name || !formData.price) return;
+    
+    if (!validate()) return;
     
     onSave({
       id: initialData?.id || '', // ID handled by parent if empty
-      name: formData.name,
+      name: formData.name!.trim(),
       description: formData.description || '',
       price: Number(formData.price),
-      category: formData.category || 'Burgers',
+      category: formData.category || 'Rice Meals',
       image: formData.image || 'https://picsum.photos/400/300', // Default placeholder
       isSpicy: formData.isSpicy,
       isVeg: formData.isVeg,
     } as MenuItem);
+  };
+
+  const handleGenerateImage = async () => {
+    if (!formData.name) {
+        setErrors(prev => ({...prev, name: "Please enter a name first"}));
+        return;
+    }
+    setErrors({}); // Clear errors if name exists
+    setIsGeneratingImage(true);
+    try {
+      const image = await generateMenuImage(formData.name, formData.description || '');
+      if (image) {
+        setFormData(prev => ({ ...prev, image }));
+      } else {
+        alert("Could not generate image. Please try again.");
+      }
+    } catch (error) {
+      console.error("Failed to generate image", error);
+      alert("Failed to generate image.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
   };
 
   return (
@@ -82,49 +124,77 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
                   <Upload size={24} className="mb-2" />
-                  <span className="text-xs">Paste Image URL below</span>
+                  <span className="text-xs">Paste Image URL below or Generate with AI</span>
                 </div>
               )}
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-600 ml-1">Image URL</label>
-              <input
-                type="text"
-                value={formData.image}
-                onChange={e => setFormData({...formData, image: e.target.value})}
-                placeholder="https://..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.image}
+                  onChange={e => setFormData({...formData, image: e.target.value})}
+                  placeholder="https://..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateImage}
+                  disabled={isGeneratingImage}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 disabled:opacity-50 disabled:hover:bg-indigo-100 transition-colors"
+                  title="Generate with AI (Type Name & Description first)"
+                >
+                  {isGeneratingImage ? <Loader2 size={16} className="animate-spin"/> : <Sparkles size={16} />}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 ml-1">
+                Tip: Enter Name & Description then click the sparkle icon.
+              </p>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-600 ml-1 flex items-center gap-1">
-                <Type size={12} /> Name
+                <Type size={12} /> Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
+                onChange={e => {
+                  setFormData({...formData, name: e.target.value});
+                  if (errors.name) setErrors({...errors, name: undefined});
+                }}
                 placeholder="e.g. Pork Sisig"
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none font-bold text-street-dark"
-                required
+                className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none font-bold text-street-dark ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
               />
+              {errors.name && (
+                <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                  <AlertCircle size={10} /> {errors.name}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-600 ml-1 flex items-center gap-1">
-                   <span className="font-sans text-base leading-none mr-1">₱</span> Price
+                   <span className="font-sans text-base leading-none mr-1">₱</span> Price <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.price}
-                  onChange={e => setFormData({...formData, price: Number(e.target.value)})}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none"
-                  required
+                  onChange={e => {
+                    setFormData({...formData, price: Number(e.target.value)});
+                    if (errors.price) setErrors({...errors, price: undefined});
+                  }}
+                  className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none ${errors.price ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
                 />
+                {errors.price && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                    <AlertCircle size={10} /> {errors.price}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">

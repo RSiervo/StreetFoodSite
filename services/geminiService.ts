@@ -68,3 +68,32 @@ export const sendMessageToAI = async (message: string, language: Language = 'en'
     return language === 'fil' ? "Ay, nalaglag ang fishball. Paki-ulit po?" : "Oops, dropped the fishball. Please try again.";
   }
 };
+
+export const generateMenuImage = async (name: string, description: string): Promise<string | null> => {
+  initAI();
+  if (!ai) throw new Error("API Key missing");
+
+  // Construct a prompt optimized for food photography
+  const prompt = `Professional, high-resolution food photography of ${name}. Description: ${description}. Authentic Filipino street food style, appetizing, studio lighting, shallow depth of field, 4k.`;
+
+  try {
+    const response = await ai.models.generateImages({
+      model: 'imagen-4.0-generate-001',
+      prompt: prompt,
+      config: {
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio: '1:1',
+      },
+    });
+
+    if (response.generatedImages && response.generatedImages.length > 0) {
+        const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+        return `data:image/jpeg;base64,${base64ImageBytes}`;
+    }
+    return null;
+  } catch (error) {
+    console.error("Image Generation Error:", error);
+    throw error;
+  }
+};

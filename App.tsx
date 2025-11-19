@@ -551,7 +551,11 @@ export default function App() {
             <div key={order.id} className="relative">
               {/* The Tracker Card */}
               <div className="relative z-10">
-                <OrderTracker order={order} language={language} />
+                <OrderTracker 
+                  order={order} 
+                  language={language} 
+                  onUpdateStatus={updateOrderStatus}
+                />
               </div>
               
               {/* The Receipt/Items List (visually connected) */}
