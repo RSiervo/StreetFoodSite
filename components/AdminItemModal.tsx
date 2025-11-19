@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
 import { MenuItem } from '../types';
-import { CATEGORIES } from '../constants';
 import { generateMenuImage } from '../services/geminiService';
 import { X, Upload, DollarSign, Type, FileText, Flame, Leaf, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 
@@ -10,14 +8,15 @@ interface AdminItemModalProps {
   onClose: () => void;
   onSave: (item: Omit<MenuItem, 'reviews' | 'rating'>) => void;
   initialData?: MenuItem;
+  categories: string[];
 }
 
-export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
+export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose, onSave, initialData, categories }) => {
   const [formData, setFormData] = useState<Partial<MenuItem>>({
     name: '',
     description: '',
     price: 0,
-    category: 'Burgers',
+    category: '',
     image: '',
     isSpicy: false,
     isVeg: false
@@ -25,6 +24,9 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
   
   const [errors, setErrors] = useState<{name?: string, price?: string}>({});
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  // Filter out 'All' for selection
+  const selectableCategories = categories.filter(c => c !== 'All');
 
   useEffect(() => {
     if (initialData) {
@@ -34,14 +36,14 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
         name: '',
         description: '',
         price: 0,
-        category: 'Rice Meals', // Default category adjusted to filipino context in constants
+        category: selectableCategories[0] || '', 
         image: '',
         isSpicy: false,
         isVeg: false
       });
     }
     setErrors({}); // Clear errors on open
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, categories]);
 
   if (!isOpen) return null;
 
@@ -70,7 +72,7 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
       name: formData.name!.trim(),
       description: formData.description || '',
       price: Number(formData.price),
-      category: formData.category || 'Rice Meals',
+      category: formData.category || selectableCategories[0] || 'Uncategorized',
       image: formData.image || 'https://picsum.photos/400/300', // Default placeholder
       isSpicy: formData.isSpicy,
       isVeg: formData.isVeg,
@@ -204,7 +206,8 @@ export const AdminItemModal: React.FC<AdminItemModalProps> = ({ isOpen, onClose,
                   onChange={e => setFormData({...formData, category: e.target.value})}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-street-orange focus:outline-none appearance-none"
                 >
-                  {CATEGORIES.filter(c => c !== 'All').map(cat => (
+                  {selectableCategories.length === 0 && <option value="">No Categories</option>}
+                  {selectableCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>

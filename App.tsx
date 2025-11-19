@@ -34,7 +34,9 @@ import {
   RotateCcw,
   ShoppingBag,
   Package,
-  Globe
+  Globe,
+  List,
+  Sparkles
 } from 'lucide-react';
 
 import { MENU_ITEMS, CATEGORIES, TRANSLATIONS } from './constants';
@@ -45,6 +47,7 @@ import { OrderTracker } from './components/OrderTracker';
 import { ReviewModal } from './components/ReviewModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminItemModal } from './components/AdminItemModal';
+import { AdminCategoryModal } from './components/AdminCategoryModal';
 
 // -- Main Component --
 export default function App() {
@@ -55,6 +58,7 @@ export default function App() {
   // -- App State --
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
   const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
+  const [categories, setCategories] = useState<string[]>(CATEGORIES);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -66,6 +70,9 @@ export default function App() {
 
   const t = TRANSLATIONS[language];
 
+  // -- AI Modal State --
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
   // -- Review Modal State --
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewTargetItem, setReviewTargetItem] = useState<{id: string, name: string} | null>(null);
@@ -73,6 +80,7 @@ export default function App() {
   // -- Admin Dashboard State --
   const [adminView, setAdminView] = useState<'overview' | 'orders' | 'menu'>('overview');
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | undefined>(undefined);
   const [orderFilter, setOrderFilter] = useState<'All' | 'Active' | 'Completed'>('All');
 
@@ -206,6 +214,34 @@ export default function App() {
   const openNewItemModal = () => {
     setEditingItem(undefined);
     setIsItemModalOpen(true);
+  };
+
+  // -- Category Handlers --
+  const handleAddCategory = (newCat: string) => {
+    if (!categories.includes(newCat)) {
+      setCategories(prev => [...prev, newCat]);
+    }
+  };
+
+  const handleEditCategory = (oldName: string, newName: string) => {
+    // Update category list
+    setCategories(prev => prev.map(c => c === oldName ? newName : c));
+    // Update items linked to this category
+    setMenuItems(prev => prev.map(item =>
+      item.category === oldName ? { ...item, category: newName } : item
+    ));
+    // Update selected category if needed
+    if (selectedCategory === oldName) setSelectedCategory(newName);
+  };
+
+  const handleDeleteCategory = (name: string) => {
+    if (menuItems.some(i => i.category === name)) {
+      if (!window.confirm(`Category "${name}" is used by some items. Delete anyway? Items will keep the category name but it won't be in the filter list.`)) {
+        return;
+      }
+    }
+    setCategories(prev => prev.filter(c => c !== name));
+    if (selectedCategory === name) setSelectedCategory('All');
   };
 
   // -- Review Handlers --
@@ -356,7 +392,7 @@ export default function App() {
 
           {/* Categories */}
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -960,12 +996,20 @@ export default function App() {
            {/* MENU TAB */}
            {adminView === 'menu' && (
              <div className="animate-slide-up">
-               <button 
-                 onClick={openNewItemModal}
-                 className="w-full py-3 bg-street-dark text-white rounded-xl font-bold shadow-lg mb-4 flex items-center justify-center gap-2 active:scale-95 transition-transform"
-               >
-                 <PlusCircle size={18} /> {t.addNewItem}
-               </button>
+               <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button 
+                    onClick={openNewItemModal}
+                    className="py-3 bg-street-dark text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform text-xs sm:text-sm"
+                  >
+                    <PlusCircle size={16} /> {t.addNewItem}
+                  </button>
+                  <button 
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="py-3 bg-white border border-gray-200 text-street-dark rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-transform text-xs sm:text-sm hover:bg-gray-50"
+                  >
+                    <List size={16} /> Categories
+                  </button>
+               </div>
 
                <div className="space-y-3">
                  {menuItems.map(item => (
@@ -1005,7 +1049,6 @@ export default function App() {
       { id: Tab.HOME, icon: Home, label: t.home },
       { id: Tab.CART, icon: ShoppingCart, label: t.cart, badge: cart.length },
       { id: Tab.ORDERS, icon: ClipboardList, label: t.orders },
-      { id: Tab.AI_CHEF, icon: Bot, label: 'AI Chef' },
       { id: Tab.PROFILE, icon: UserCircle, label: t.profile },
     ];
 
@@ -1059,9 +1102,38 @@ export default function App() {
         
         {activeTab === Tab.CART && renderCart()}
         {activeTab === Tab.ORDERS && renderOrders()}
-        {activeTab === Tab.AI_CHEF && <AIChat language={language} />}
         {activeTab === Tab.PROFILE && renderProfile()}
       </div>
+
+      {/* Floating AI Chef Button */}
+      {!isAIChatOpen && (
+        <button
+          onClick={() => {
+             handleProtectedAction(() => setIsAIChatOpen(true));
+          }}
+          className="fixed bottom-24 right-4 z-40 bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all animate-bounce focus:outline-none group"
+        >
+          <Bot size={28} className="group-hover:rotate-12 transition-transform" />
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></div>
+          <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+        </button>
+      )}
+
+      {/* AI Chat Modal */}
+      {isAIChatOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center pointer-events-none">
+           {/* Backdrop */}
+           <div 
+             className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity"
+             onClick={() => setIsAIChatOpen(false)}
+           ></div>
+           
+           {/* Modal Content */}
+           <div className="bg-white w-full sm:w-[400px] h-[85vh] sm:h-[600px] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden pointer-events-auto transform transition-transform animate-slide-up flex flex-col">
+              <AIChat language={language} onClose={() => setIsAIChatOpen(false)} />
+           </div>
+        </div>
+      )}
 
       {/* Bottom Navigation */}
       {renderNav()}
@@ -1086,6 +1158,16 @@ export default function App() {
         onClose={() => setIsItemModalOpen(false)}
         onSave={handleSaveMenuItem}
         initialData={editingItem}
+        categories={categories}
+      />
+
+      <AdminCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        categories={categories}
+        onAdd={handleAddCategory}
+        onEdit={handleEditCategory}
+        onDelete={handleDeleteCategory}
       />
     </div>
   );

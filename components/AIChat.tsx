@@ -1,15 +1,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, X } from 'lucide-react';
 import { sendMessageToAI, startChatSession } from '../services/geminiService';
 import { ChatMessage, Language } from '../types';
 import { TRANSLATIONS } from '../constants';
 
 interface AIChatProps {
   language: Language;
+  onClose?: () => void;
 }
 
-export const AIChat: React.FC<AIChatProps> = ({ language }) => {
+export const AIChat: React.FC<AIChatProps> = ({ language, onClose }) => {
   const [input, setInput] = useState('');
   const t = TRANSLATIONS[language];
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -79,14 +80,24 @@ export const AIChat: React.FC<AIChatProps> = ({ language }) => {
   return (
     <div className="flex flex-col h-full bg-street-light">
       {/* Header */}
-      <div className="bg-white p-4 shadow-sm border-b flex items-center gap-3 sticky top-0 z-10">
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-full shadow-md">
-           <Sparkles size={20} className="text-white" />
+      <div className="bg-white p-4 shadow-sm border-b flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-full shadow-md">
+             <Sparkles size={20} className="text-white" />
+          </div>
+          <div>
+            <h2 className="font-bold text-street-dark">StreetBot AI</h2>
+            <p className="text-xs text-gray-500">Your personal food guide</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-bold text-street-dark">StreetBot AI</h2>
-          <p className="text-xs text-gray-500">Your personal food guide</p>
-        </div>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* Messages Area */}
@@ -132,7 +143,7 @@ export const AIChat: React.FC<AIChatProps> = ({ language }) => {
       </div>
 
       {/* Input Area */}
-      <div className="bg-white p-3 border-t sticky bottom-[70px] sm:bottom-0">
+      <div className="bg-white p-3 border-t sticky bottom-0">
         <div className="relative flex items-center gap-2">
           <input
             type="text"
