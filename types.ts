@@ -1,3 +1,4 @@
+
 export interface Review {
   id: string;
   userId: string;
@@ -63,3 +64,5 @@ export interface UserProfile {
   phone: string;
   address: string;
 }
+
+export type Language = 'en' | 'fil';

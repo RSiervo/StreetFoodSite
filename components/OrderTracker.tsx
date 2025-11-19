@@ -1,13 +1,17 @@
+
 import React, { useEffect, useState } from 'react';
-import { Order, OrderStatus } from '../types';
-import { CheckCircle2, ChefHat, Truck, Home, Clock, Phone, MapPin, Navigation, Star } from 'lucide-react';
+import { Order, OrderStatus, Language } from '../types';
+import { TRANSLATIONS } from '../constants';
+import { CheckCircle2, ChefHat, Truck, Home, Phone, Star } from 'lucide-react';
 
 interface OrderTrackerProps {
   order: Order;
+  language: Language;
 }
 
-export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
+export const OrderTracker: React.FC<OrderTrackerProps> = ({ order, language }) => {
   const [progress, setProgress] = useState(0);
+  const t = TRANSLATIONS[language];
 
   // Map status to percentage for the driver position
   const getProgress = (status: OrderStatus) => {
@@ -30,11 +34,37 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
     return () => clearTimeout(timer);
   }, [order.status]);
 
+  // Helper to format timestamps
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
+
+  // Calculate dynamic times based on order creation
+  const baseTime = order.createdAt;
+  // Simulate a 45-minute delivery window
+  const estimatedDeliveryTime = order.estimatedDeliveryTime || (baseTime + 45 * 60000);
+
   const steps = [
-    { status: OrderStatus.CONFIRMED, label: 'Confirmed', time: '10:30 AM' },
-    { status: OrderStatus.PREPARING, label: 'Preparing', time: '10:35 AM' },
-    { status: OrderStatus.DELIVERING, label: 'On the way', time: '10:50 AM' },
-    { status: OrderStatus.DELIVERED, label: 'Delivered', time: '11:05 AM' },
+    { 
+      status: OrderStatus.CONFIRMED, 
+      label: t.status_confirmed, 
+      time: formatTime(baseTime) 
+    },
+    { 
+      status: OrderStatus.PREPARING, 
+      label: t.status_preparing, 
+      time: formatTime(baseTime + 10 * 60000) 
+    },
+    { 
+      status: OrderStatus.DELIVERING, 
+      label: t.status_delivering, 
+      time: formatTime(baseTime + 25 * 60000) 
+    },
+    { 
+      status: OrderStatus.DELIVERED, 
+      label: t.status_delivered, 
+      time: formatTime(estimatedDeliveryTime) 
+    },
   ];
 
   const isPast = (stepStatus: OrderStatus) => {
@@ -43,6 +73,8 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
     // Handle edge cases where status might not be in the simplified steps list
     if (orderStatusIdx === -1) {
        if (order.status === OrderStatus.READY && stepStatus === OrderStatus.PREPARING) return true;
+       // Fallback: if Delivered, assume all previous steps are done
+       if (order.status === OrderStatus.DELIVERED) return true;
        return false;
     }
     return stepIdx <= orderStatusIdx;
@@ -56,7 +88,11 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
         <div>
           <h3 className="font-bold text-street-dark text-lg">Order #{order.id.slice(-4)}</h3>
           <p className="text-xs text-gray-500 flex items-center gap-1">
-            Estimated Arrival: <span className="font-semibold text-street-dark">12:45 PM</span>
+            {order.status === OrderStatus.DELIVERED ? (
+              <span className="text-green-600 font-medium">{t.status_arrived} {formatTime(estimatedDeliveryTime)}</span>
+            ) : (
+              <>{t.status_estimated}: <span className="font-semibold text-street-dark">{formatTime(estimatedDeliveryTime)}</span></>
+            )}
           </p>
         </div>
         <div className="bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm flex items-center gap-2">
@@ -103,7 +139,7 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
            <div className="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center border-2 border-street-dark">
               <ChefHat size={16} className="text-street-dark" />
            </div>
-           <span className="bg-street-dark text-white text-[10px] px-2 py-0.5 rounded-full mt-1 shadow-sm font-bold">Kitchen</span>
+           <span className="bg-street-dark text-white text-[10px] px-2 py-0.5 rounded-full mt-1 shadow-sm font-bold">{t.kitchen}</span>
         </div>
 
         {/* End Point (Home) */}
@@ -111,7 +147,7 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
            <div className="w-8 h-8 bg-street-orange rounded-full shadow-md flex items-center justify-center border-2 border-white animate-bounce">
               <Home size={16} className="text-white" />
            </div>
-           <span className="bg-white text-street-dark text-[10px] px-2 py-0.5 rounded-full mt-1 shadow-sm font-bold border border-gray-100">Home</span>
+           <span className="bg-white text-street-dark text-[10px] px-2 py-0.5 rounded-full mt-1 shadow-sm font-bold border border-gray-100">{t.home}</span>
         </div>
 
         {/* Moving Driver Pin */}
@@ -132,7 +168,7 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
            </div>
            {order.status === OrderStatus.DELIVERING && (
              <div className="bg-white/90 backdrop-blur px-2 py-1 rounded shadow mt-1 text-[10px] font-bold border border-gray-100 whitespace-nowrap">
-               2 mins away
+               2 {t.driver_mins}
              </div>
            )}
         </div>
@@ -171,7 +207,7 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ order }) => {
                     </div>
                     {active && (
                       <p className="text-xs text-street-orange animate-pulse font-medium">
-                         Processing...
+                         {t.processing}
                       </p>
                     )}
                  </div>

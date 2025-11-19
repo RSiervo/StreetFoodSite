@@ -1,6 +1,7 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { MenuItem } from '../types';
-import { Plus, Flame, Leaf, Star, Heart } from 'lucide-react';
+import { Plus, Flame, Leaf, Star, Heart, ImageOff } from 'lucide-react';
 
 interface FoodCardProps {
   item: MenuItem;
@@ -11,26 +12,35 @@ interface FoodCardProps {
 
 export const FoodCard: React.FC<FoodCardProps> = ({ item, onAdd, isFavorite = false, onToggleFavorite }) => {
   const reviewCount = item.reviews.length;
+  const [imgError, setImgError] = useState(false);
   
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full border border-street-gray/50 relative group">
-      <div className="relative h-32 sm:h-40 overflow-hidden">
-        <img 
-          src={item.image} 
-          alt={item.name} 
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+      <div className="relative h-32 sm:h-40 overflow-hidden bg-gray-100">
+        {!imgError ? (
+          <img 
+            src={item.image} 
+            alt={item.name} 
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
+            <ImageOff size={24} className="mb-1" />
+            <span className="text-[10px]">Image not available</span>
+          </div>
+        )}
         
         {/* Tags (Top Left) */}
         <div className="absolute top-2 left-2 flex gap-1">
           {item.isSpicy && (
-            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-0.5 shadow-sm">
+            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-0.5 shadow-sm backdrop-blur-md bg-opacity-90">
               <Flame size={10} fill="currentColor" /> Spicy
             </span>
           )}
           {item.isVeg && (
-            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-0.5 shadow-sm">
+            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-0.5 shadow-sm backdrop-blur-md bg-opacity-90">
               <Leaf size={10} fill="currentColor" /> Veg
             </span>
           )}
@@ -73,7 +83,7 @@ export const FoodCard: React.FC<FoodCardProps> = ({ item, onAdd, isFavorite = fa
         )}
 
         <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="font-bold text-lg text-street-dark">${item.price.toFixed(2)}</span>
+          <span className="font-bold text-lg text-street-dark">₱{item.price.toFixed(2)}</span>
           <button 
             onClick={() => onAdd(item)}
             className="bg-street-dark text-white p-2 rounded-full active:scale-95 transition-transform hover:bg-street-orange focus:outline-none focus:ring-2 focus:ring-street-orange focus:ring-offset-1"

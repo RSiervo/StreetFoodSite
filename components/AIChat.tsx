@@ -1,19 +1,37 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
-import { sendMessageToAI } from '../services/geminiService';
-import { ChatMessage } from '../types';
+import { sendMessageToAI, startChatSession } from '../services/geminiService';
+import { ChatMessage, Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 
-export const AIChat: React.FC = () => {
+interface AIChatProps {
+  language: Language;
+}
+
+export const AIChat: React.FC<AIChatProps> = ({ language }) => {
   const [input, setInput] = useState('');
+  const t = TRANSLATIONS[language];
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'model',
-      text: "Hey there! I'm StreetBot 🤖. Hungry? Ask me for recommendations or what's spicy on the menu!"
+      text: t.ai_welcome
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize/Re-initialize Chat when language changes
+  useEffect(() => {
+    startChatSession(language);
+    // Reset welcome message on language change
+    setMessages([{
+      id: 'welcome-' + language,
+      role: 'model',
+      text: t.ai_welcome
+    }]);
+  }, [language]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,7 +55,7 @@ export const AIChat: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const response = await sendMessageToAI(userMsg.text);
+      const response = await sendMessageToAI(userMsg.text, language);
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
@@ -121,7 +139,7 @@ export const AIChat: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about spicy food..."
+            placeholder={t.ai_placeholder}
             className="flex-grow bg-gray-100 text-street-dark rounded-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
           />
           <button 

@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 import { Mail, User, ArrowRight, MapPin, Phone, X } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: (user: UserProfile) => void;
+  language: Language;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, language }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState<UserProfile>({
     name: '',
@@ -16,6 +19,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     phone: '',
     address: ''
   });
+
+  const t = TRANSLATIONS[language];
 
   if (!isOpen) return null;
 
@@ -71,10 +76,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-street-dark">
-            {isLogin ? 'Welcome Back!' : 'Join the Feast'}
+            {isLogin ? t.loginWelcome : t.joinFeast}
           </h2>
           <p className="text-gray-500 text-sm mt-1">
-            {isLogin ? 'Log in to continue your food journey.' : 'Create an account to start ordering.'}
+            {isLogin ? t.loginText : t.joinText}
           </p>
         </div>
 
@@ -89,12 +94,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Continue with Google
+          {t.continueGoogle}
         </button>
 
         <div className="flex items-center gap-4 mb-6">
           <div className="h-px bg-gray-200 flex-1"></div>
-          <span className="text-xs text-gray-400 font-medium uppercase">Or</span>
+          <span className="text-xs text-gray-400 font-medium uppercase">{t.or}</span>
           <div className="h-px bg-gray-200 flex-1"></div>
         </div>
 
@@ -102,7 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
           {!isLogin && (
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-600 ml-1 flex items-center gap-1">
-                <User size={12} /> Full Name
+                <User size={12} /> {t.fullName}
               </label>
               <input
                 type="text"
@@ -118,7 +123,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
           <div className="space-y-1">
              <label className="text-xs font-bold text-gray-600 ml-1 flex items-center gap-1">
-              <Mail size={12} /> Email
+              <Mail size={12} /> {t.email}
             </label>
             <input
               type="email"
@@ -135,7 +140,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             <>
               <div className="space-y-1">
                  <label className="text-xs font-bold text-gray-600 ml-1 flex items-center gap-1">
-                  <Phone size={12} /> Phone Number
+                  <Phone size={12} /> {t.phone}
                 </label>
                 <input
                   type="tel"
@@ -150,7 +155,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-600 ml-1 flex items-center gap-1">
-                  <MapPin size={12} /> Delivery Address
+                  <MapPin size={12} /> {t.address}
                 </label>
                 <textarea
                   name="address"
@@ -169,19 +174,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
             type="submit"
             className="w-full bg-street-dark text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all mt-2 flex items-center justify-center gap-2 hover:bg-street-orange"
           >
-            {isLogin ? 'Log In' : 'Create Account'}
+            {isLogin ? t.login : t.createAccount}
             <ArrowRight size={18} />
           </button>
         </form>
         
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
+            {isLogin ? t.noAccount : t.haveAccount}
             <button 
               onClick={() => setIsLogin(!isLogin)}
               className="text-street-orange font-bold ml-1 hover:underline"
             >
-              {isLogin ? 'Sign Up' : 'Log In'}
+              {isLogin ? t.signUp : t.login}
             </button>
           </p>
         </div>
