@@ -1,0 +1,5 @@
+{
+  "name": "StreetBites",
+  "description": "A vibrant street food ordering app with live delivery tracking, AI-powered food recommendations, and a dual user/admin interface.",
+  "requestFramePermissions": []
+}
