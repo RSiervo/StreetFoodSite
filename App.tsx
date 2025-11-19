@@ -16,21 +16,31 @@ import {
   Utensils,
   Heart,
   Clock,
-  X
+  MapPin,
+  LogOut,
+  Edit2,
+  Phone,
+  ArrowRight,
+  ChefHat,
+  Info
 } from 'lucide-react';
 
 import { MENU_ITEMS, CATEGORIES } from './constants';
-import { MenuItem, CartItem, Order, Tab, OrderStatus, Review } from './types';
+import { MenuItem, CartItem, Order, Tab, OrderStatus, Review, UserProfile } from './types';
 import { FoodCard } from './components/FoodCard';
 import { AIChat } from './components/AIChat';
 import { OrderTracker } from './components/OrderTracker';
 import { ReviewModal } from './components/ReviewModal';
+import { AuthModal } from './components/AuthModal';
 
 // -- Main Component --
 export default function App() {
-  // -- State --
+  // -- User Auth State --
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // -- App State --
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
-  // Initial menu state from constants to allow updates
   const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -44,15 +54,43 @@ export default function App() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewTargetItem, setReviewTargetItem] = useState<{id: string, name: string} | null>(null);
 
+  // -- Editing Profile State --
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [tempAddress, setTempAddress] = useState('');
+
+  // -- Helper: Check Auth --
+  const handleProtectedAction = (action: () => void) => {
+    if (user) {
+      action();
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
+
   // -- Handlers --
 
+  const handleLogin = (loggedInUser: UserProfile) => {
+    setUser(loggedInUser);
+    setIsAuthModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setCart([]);
+    setOrders([]);
+    setActiveTab(Tab.HOME);
+    setIsAdmin(false);
+  };
+
   const addToCart = (item: MenuItem) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
+    handleProtectedAction(() => {
+      setCart(prev => {
+        const existing = prev.find(i => i.id === item.id);
+        if (existing) {
+          return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+        }
+        return [...prev, { ...item, quantity: 1 }];
+      });
     });
   };
 
@@ -73,9 +111,11 @@ export default function App() {
   };
 
   const toggleFavorite = (itemId: string) => {
-    setFavorites(prev => 
-      prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
-    );
+    handleProtectedAction(() => {
+      setFavorites(prev => 
+        prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+      );
+    });
   };
 
   const cartTotal = useMemo(() => {
@@ -114,11 +154,12 @@ export default function App() {
 
   const handleSubmitReview = (rating: number, comment: string) => {
     if (!reviewTargetItem) return;
+    if (!user) return; 
 
     const newReview: Review = {
       id: `r-${Date.now()}`,
-      userId: 'current-user',
-      userName: 'You',
+      userId: user.name,
+      userName: user.name,
       rating,
       comment,
       date: Date.now()
@@ -131,11 +172,18 @@ export default function App() {
         return {
           ...item,
           reviews: updatedReviews,
-          rating: Number(avgRating.toFixed(1)) // Normalize to 1 decimal
+          rating: Number(avgRating.toFixed(1))
         };
       }
       return item;
     }));
+  };
+
+  const saveAddress = () => {
+    if (user && tempAddress) {
+      setUser({ ...user, address: tempAddress });
+      setIsEditingAddress(false);
+    }
   };
 
   // -- Search History Handlers --
@@ -169,70 +217,89 @@ export default function App() {
 
     return (
       <div className="pb-24 animate-fade-in">
-        {/* Hero Header */}
-        <div className="bg-street-dark text-white p-6 rounded-b-3xl shadow-lg mb-6">
-           <div className="flex justify-between items-center mb-4">
-             <div>
-               <p className="text-street-orange font-bold text-sm uppercase tracking-wide">Welcome Back</p>
-               <h1 className="text-2xl font-bold">Hungry for <br/><span className="text-street-yellow">Street Food?</span></h1>
-             </div>
-             <div className="w-12 h-12 bg-street-orange rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-xl">🍔</span>
+        {/* Landing Page Hero Section (Only show if no search) */}
+        {!searchQuery && selectedCategory === 'All' && (
+           <div className="relative w-full h-[300px] bg-street-dark rounded-b-3xl overflow-hidden mb-6 shadow-xl group">
+             <img 
+               src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1974&auto=format&fit=crop" 
+               alt="Street Food" 
+               className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-105"
+             />
+             <div className="absolute inset-0 bg-gradient-to-t from-street-dark via-transparent to-transparent"></div>
+             
+             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                <div className="flex items-center gap-2 mb-2">
+                   <span className="bg-street-orange text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                     Est. 2024
+                   </span>
+                   <div className="flex text-street-yellow">
+                     <Star size={12} fill="currentColor" />
+                     <Star size={12} fill="currentColor" />
+                     <Star size={12} fill="currentColor" />
+                     <Star size={12} fill="currentColor" />
+                     <Star size={12} fill="currentColor" />
+                   </div>
+                </div>
+                <h1 className="text-3xl font-bold leading-tight mb-2">Street<span className="text-street-orange">Bites</span></h1>
+                <p className="text-gray-300 text-sm max-w-[80%] mb-4">
+                  Experience the authentic taste of global street food, delivered hot to your curb.
+                </p>
+                
+                {!user && (
+                  <button 
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="bg-white text-street-dark px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-street-orange hover:text-white transition-colors"
+                  >
+                    Sign Up to Order <ArrowRight size={14} />
+                  </button>
+                )}
              </div>
            </div>
+        )}
 
-           {/* Search */}
-           <div className="relative">
+        {/* About Section (Visible on Home) */}
+        {!searchQuery && selectedCategory === 'All' && (
+          <div className="px-6 mb-8">
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-center">
+                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 shrink-0">
+                   <Info size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-street-dark text-sm">About Us</h3>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                    We connect you with the city's best hidden gems. From spicy noodles to crispy tacos, our AI Chef helps you find your next obsession.
+                  </p>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* Search & Menu Header */}
+        <div className="px-4 sticky top-0 z-40 bg-street-light/95 backdrop-blur-sm py-2">
+          {/* Search Bar */}
+          <div className="relative mb-4">
              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
              <input 
                type="text" 
-               placeholder="Search burritos, momos..." 
-               className="w-full bg-white/10 backdrop-blur-md text-white placeholder-gray-300 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-street-orange transition-all"
+               placeholder="Find your craving..." 
+               className="w-full bg-white border border-gray-200 text-street-dark placeholder-gray-400 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-street-orange shadow-sm transition-all"
                value={searchQuery}
                onChange={(e) => setSearchQuery(e.target.value)}
                onKeyDown={handleSearchKeyDown}
              />
-           </div>
-        </div>
-
-        {/* Recent Searches */}
-        {searchHistory.length > 0 && (
-          <div className="px-4 mb-6 animate-slide-up">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                <Clock size={12} /> Recent
-              </h3>
-              <button 
-                onClick={clearSearchHistory} 
-                className="text-xs text-street-orange hover:text-red-500 font-medium transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {searchHistory.map((term, index) => (
-                <button
-                  key={index}
-                  onClick={() => applySearchHistory(term)}
-                  className="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-1.5 rounded-full text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-street-orange transition-all active:scale-95"
-                >
-                   <span>{term}</span>
-                </button>
-              ))}
-            </div>
           </div>
-        )}
 
-        {/* Categories */}
-        <div className="px-4 mb-6 overflow-x-auto no-scrollbar">
-          <div className="flex gap-3">
+          {/* Categories */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
             {CATEGORIES.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`
-                  whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors
-                  ${selectedCategory === cat ? 'bg-street-dark text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100'}
+                  whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95
+                  ${selectedCategory === cat 
+                    ? 'bg-street-dark text-white shadow-md' 
+                    : 'bg-white text-gray-500 border border-gray-200 hover:border-street-orange'}
                 `}
               >
                 {cat}
@@ -241,8 +308,36 @@ export default function App() {
           </div>
         </div>
 
+        {/* Recent Searches (If active) */}
+        {searchHistory.length > 0 && !searchQuery && (
+          <div className="px-4 mb-4 animate-slide-up">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <Clock size={12} /> Recent
+              </h3>
+              <button 
+                onClick={clearSearchHistory} 
+                className="text-[10px] text-street-orange hover:text-red-500 font-medium"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {searchHistory.map((term, index) => (
+                <button
+                  key={index}
+                  onClick={() => applySearchHistory(term)}
+                  className="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-1.5 rounded-full text-xs font-medium text-gray-600"
+                >
+                   {term}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Menu Grid */}
-        <div className="px-4 grid grid-cols-2 gap-4">
+        <div className="px-4 grid grid-cols-2 gap-4 mt-2">
           {filteredItems.map(item => (
             <div key={item.id} className="h-full">
               <FoodCard 
@@ -266,7 +361,16 @@ export default function App() {
 
   const renderCart = () => (
     <div className="p-4 pb-24 h-full flex flex-col animate-fade-in">
-      <h2 className="text-2xl font-bold text-street-dark mb-6">My Cart</h2>
+      <h2 className="text-2xl font-bold text-street-dark mb-2">My Cart</h2>
+      
+      {/* Delivery Address Header in Cart */}
+      <div className="flex items-start gap-2 text-xs text-gray-500 mb-6 bg-gray-50 p-2 rounded-lg border border-gray-100">
+         <MapPin size={14} className="text-street-orange shrink-0 mt-0.5" />
+         <div>
+            <span className="font-bold text-gray-700">Delivering to:</span>
+            <p className="line-clamp-1">{user?.address}</p>
+         </div>
+      </div>
       
       {cart.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-grow text-center">
@@ -391,14 +495,70 @@ export default function App() {
       <div className="p-4 pb-24 animate-fade-in">
          <h2 className="text-2xl font-bold text-street-dark mb-6">Profile & Settings</h2>
          
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-street-orange rounded-full flex items-center justify-center text-white text-2xl font-bold">
-              JD
+         {/* User Card */}
+         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 relative overflow-hidden">
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-16 h-16 bg-street-orange rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md border-2 border-white">
+                {user?.name.charAt(0) || 'U'}
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-street-dark">{user?.name}</h3>
+                <p className="text-gray-500 text-xs flex items-center gap-1">
+                   <Phone size={10} /> {user?.phone || 'No phone'}
+                </p>
+                <p className="text-gray-500 text-xs flex items-center gap-1 mt-0.5">
+                   <Settings size={10} /> {user?.email || 'No email'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-lg">John Doe</h3>
-              <p className="text-gray-500 text-sm">+1 (555) 123-4567</p>
+            <div className="absolute -right-4 -top-4 bg-street-yellow/10 w-32 h-32 rounded-full z-0"></div>
+         </div>
+
+         {/* Address Section */}
+         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="font-bold text-street-dark text-sm flex items-center gap-2">
+                <MapPin size={16} className="text-street-orange" /> Delivery Address
+              </h3>
+              {!isEditingAddress && (
+                <button 
+                  onClick={() => {
+                    setTempAddress(user?.address || '');
+                    setIsEditingAddress(true);
+                  }}
+                  className="text-xs text-indigo-600 font-medium hover:underline flex items-center gap-1"
+                >
+                  <Edit2 size={12} /> Edit
+                </button>
+              )}
             </div>
+            
+            {isEditingAddress ? (
+              <div className="mt-2 animate-fade-in">
+                <textarea
+                  value={tempAddress}
+                  onChange={(e) => setTempAddress(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-1 focus:ring-street-orange focus:outline-none resize-none mb-2"
+                  rows={3}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button 
+                    onClick={() => setIsEditingAddress(false)}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={saveAddress}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-street-dark rounded-lg hover:bg-street-orange transition-colors"
+                  >
+                    Save Address
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-600 text-sm leading-relaxed">{user?.address}</p>
+            )}
          </div>
 
          {/* Favorites Section */}
@@ -452,14 +612,17 @@ export default function App() {
                </button>
             </div>
 
-            <button className="w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center text-left">
+            <button 
+              onClick={handleLogout}
+              className="w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center text-left hover:bg-red-50 transition-colors group"
+            >
                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-lg text-green-600">
-                    <DollarSign size={20} />
+                  <div className="bg-red-100 p-2 rounded-lg text-red-600 group-hover:bg-red-200">
+                    <LogOut size={20} />
                   </div>
-                  <span className="font-medium text-street-dark">Payment Methods</span>
+                  <span className="font-medium text-street-dark group-hover:text-red-600">Log Out</span>
                </div>
-               <ChevronRight size={18} className="text-gray-300" />
+               <ChevronRight size={18} className="text-gray-300 group-hover:text-red-300" />
             </button>
          </div>
       </div>
@@ -531,7 +694,7 @@ export default function App() {
   // -- Navigation Bar --
   const renderNav = () => {
     const tabs = [
-      { id: Tab.HOME, icon: Home, label: 'Menu' },
+      { id: Tab.HOME, icon: Home, label: 'Home' }, // Renamed Menu to Home (conceptual)
       { id: Tab.CART, icon: ShoppingCart, label: 'Cart', badge: cart.length },
       { id: Tab.ORDERS, icon: ClipboardList, label: 'Orders' },
       { id: Tab.AI_CHEF, icon: Bot, label: 'AI Chef' },
@@ -547,7 +710,13 @@ export default function App() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === Tab.HOME) {
+                    setActiveTab(tab.id);
+                  } else {
+                    handleProtectedAction(() => setActiveTab(tab.id));
+                  }
+                }}
                 className={`relative flex flex-col items-center p-2 transition-all ${isActive ? 'text-street-orange scale-105' : 'text-gray-400'}`}
               >
                 <div className={`p-1.5 rounded-xl transition-colors ${isActive ? 'bg-orange-50' : 'bg-transparent'}`}>
@@ -568,7 +737,6 @@ export default function App() {
     );
   };
 
-  // -- Main Render --
   return (
     <div className="h-full w-full flex flex-col max-w-md mx-auto bg-street-light shadow-2xl min-h-screen relative">
       {/* Main Content Area */}
@@ -596,6 +764,13 @@ export default function App() {
         onClose={() => setIsReviewModalOpen(false)}
         onSubmit={handleSubmitReview}
         itemName={reviewTargetItem?.name || 'Item'}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLogin={handleLogin}
       />
     </div>
   );

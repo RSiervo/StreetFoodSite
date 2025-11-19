@@ -56,3 +56,10 @@ export interface ChatMessage {
   text: string;
   isLoading?: boolean;
 }
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
